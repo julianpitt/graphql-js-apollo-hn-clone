@@ -55,8 +55,8 @@ module.exports = {
 
     Link: {
         id: root => root._id || root.id, // 5
-        postedBy: ({postedById}, data, {mongo: {Users}}) => {
-            return Users.findOne({_id: postedById});
+        postedBy: ({postedById}, data, {dataloaders: {userLoader}}) => {
+            return userLoader.load(postedById);
         },
         votes: ({_id}, data, {mongo: {Votes}}) => {
             return Votes.find({linkId: _id}).toArray();
@@ -72,8 +72,8 @@ module.exports = {
     Vote: {
         id: root => root._id || root.id,
 
-        user: ({userId}, data, {mongo: {Users}}) => {
-            return Users.findOne({_id: userId});
+        user: ({userId}, data, {dataloaders: {userLoader}}) => {
+            return userLoader.load(userId);
         },
 
         link: ({linkId}, data, {mongo: {Links}}) => {

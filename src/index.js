@@ -3,6 +3,7 @@ const bodyParser = require('body-parser');
 const {graphqlExpress, graphiqlExpress} = require('apollo-server-express');
 const schema = require('./schema');
 const {authenticate} = require('./authentication');
+const buildDataloaders = require('./dataloaders');
 
 // 1
 const connectMongo = require('./mongo-connector');
@@ -14,7 +15,11 @@ return connectMongo().then((mongo) => {
   const buildOptions = (req, res) => {
     return authenticate(req, mongo.Users).then(user => {
       return {
-        context: {mongo, user}, // This context object is passed to all resolvers.
+        context: {
+          mongo, 
+          user,
+          dataloaders: buildDataloaders(mongo)
+        }, // This context object is passed to all resolvers.
         schema,
       };
     });
