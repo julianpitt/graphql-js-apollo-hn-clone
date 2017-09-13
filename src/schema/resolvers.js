@@ -1,4 +1,35 @@
+const URL = require('url');
+const pubsub = require('../pubsub');
+const ObjectID = require('mongodb').ObjectID;
+
+class ValidationError extends Error {
+  constructor(message, field) {
+    super(message);
+    this.field = field;
+  }
+}
+
+function assertValidLink ({url}) {
+    var urlRegex = '^(?!mailto:)(?:(?:http|https|ftp)://)(?:\\S+(?::\\S*)?@)?(?:(?:(?:[1-9]\\d?|1\\d\\d|2[01]\\d|22[0-3])(?:\\.(?:1?\\d{1,2}|2[0-4]\\d|25[0-5])){2}(?:\\.(?:[0-9]\\d?|1\\d\\d|2[0-4]\\d|25[0-4]))|(?:(?:[a-z\\u00a1-\\uffff0-9]+-?)*[a-z\\u00a1-\\uffff0-9]+)(?:\\.(?:[a-z\\u00a1-\\uffff0-9]+-?)*[a-z\\u00a1-\\uffff0-9]+)*(?:\\.(?:[a-z\\u00a1-\\uffff]{2,})))|localhost)(?::\\d{2,5})?(?:(/|\\?|#)[^\\s]*)?$';
+    var urlParsed = new RegExp(urlRegex, 'i');
+    if(!(url.length < 2083 && urlParsed.test(url))) {
+        throw new ValidationError('Link validation error: invalid url.', 'url');
+    }
+}
+
+
+
 module.exports = {
+
+  Subscription: {
+    Vote: {
+      subscribe: () => pubsub.asyncIterator('Vote'),
+    },
+    Link: {
+      subscribe: () => pubsub.asyncIterator('Link'),
+    },
+  },
+
   Query: {
     allLinks: (root, data, {mongo: {Links}}) => { // 1
       return Links.find({}).toArray(); // 2
@@ -8,9 +39,14 @@ module.exports = {
   Mutation: {
 
     createLink: (root, data, {mongo: {Links}, user}) => {
+        assertValidLink(data);
         const newLink = Object.assign({postedById: user && user._id}, data);
         return Links.insert(newLink).then((response) => {
-            return Object.assign({id: response.insertedIds[0]}, newLink); // 4
+            
+            newLink.id = response.insertedIds[0]
+            pubsub.publish('Link', {Link: {mutation: 'CREATED', node: newLink}});
+
+            return newLink;
         });
     
     },
@@ -43,12 +79,20 @@ module.exports = {
             linkId: new ObjectID(data.linkId),
         };
         return Votes.insert(newVote).then((response) => {
-            return Object.assign({id: response.insertedIds[0]}, newVote);
+
+            newVote.id = response.insertedIds[0];
+            pubsub.publish('Vote', {Vote: {mutation: 'CREATED', node: newVote}});
+
+            return newVote;
         });
     },
 
-    removeAllVotes: (root, data, {mongo: {Votes,Users,Links}}) => {
+    removeAll: (root, data, {mongo: {Votes,Users,Links}}) => {
         return Votes.remove().then(() => Users.remove()).then(() => Links.remove());
+    },
+
+    removeAllLinks: (root, data, {mongo: {Votes,Links}}) => {
+        return Votes.remove().then(() => Links.remove());
     }
 
 },

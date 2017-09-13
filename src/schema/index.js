@@ -3,6 +3,36 @@ const resolvers = require('./resolvers');
 
 // Define your types here.
 const typeDefs = `
+
+  type Subscription {
+    Vote(filter: VoteSubscriptionFilter): VoteSubscriptionPayload
+    Link(filter: LinkSubscriptionFilter): LinkSubscriptionPayload
+  }
+
+  input LinkSubscriptionFilter {
+    mutation_in: [_ModelMutationType!]
+  }
+
+  input VoteSubscriptionFilter {
+    mutation_in: [_ModelMutationType!]
+  }
+
+  type LinkSubscriptionPayload {
+    mutation: _ModelMutationType!
+    node: Link
+  }
+
+  type VoteSubscriptionPayload {
+    mutation: _ModelMutationType!
+    node: Vote
+  }
+
+  enum _ModelMutationType {
+    CREATED
+    UPDATED
+    DELETED
+  }
+
   type Link {
     id: ID!
     url: String!
@@ -20,7 +50,8 @@ const typeDefs = `
     createUser(name: String!, authProvider: AuthProviderSignupData!): User
     signinUser(credentials: AUTH_PROVIDER_EMAIL): SigninPayload
     createVote(linkId: ID!): Vote
-    removeAllVotes: String
+    removeAll: String
+    removeAllLinks: String
   }
 
   type User {
