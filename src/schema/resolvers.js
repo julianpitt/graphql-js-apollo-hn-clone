@@ -34,6 +34,10 @@ module.exports = {
     allLinks: (root, data, {mongo: {Links}}) => { // 1
       return Links.find({}).toArray(); // 2
     },
+
+    allVotes: (root, data, {mongo: {Votes}}) => { // 1
+      return Votes.find({}).toArray(); // 2
+    },
   },
 
   Mutation: {
@@ -43,7 +47,8 @@ module.exports = {
         const newLink = Object.assign({postedById: user && user._id}, data);
         return Links.insert(newLink).then((response) => {
             
-            newLink.id = response.insertedIds[0]
+            newLink.id = response.insertedIds[0];
+            console.log(newLink);
             pubsub.publish('Link', {Link: {mutation: 'CREATED', node: newLink}});
 
             return newLink;
@@ -81,6 +86,7 @@ module.exports = {
         return Votes.insert(newVote).then((response) => {
 
             newVote.id = response.insertedIds[0];
+            console.log(newVote);
             pubsub.publish('Vote', {Vote: {mutation: 'CREATED', node: newVote}});
 
             return newVote;
