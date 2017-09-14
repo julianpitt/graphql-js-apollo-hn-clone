@@ -17,6 +17,27 @@ function assertValidLink ({url}) {
     }
 }
 
+function buildFilters({OR = [], description_contains, url_contains}) {
+    
+    const filter = (description_contains || url_contains) ? {} : null;
+
+    if (description_contains) {
+      filter.description = {$regex: `.*${description_contains}.*`};
+    }
+
+    if (url_contains) {
+      filter.url = {$regex: `.*${url_contains}.*`};
+    }
+  
+    let filters = filter ? [filter] : [];
+
+    for (let i = 0; i < OR.length; i++) {
+      filters = filters.concat(buildFilters(OR[i]));
+    }
+
+    return filters;
+  }
+
 
 
 module.exports = {
@@ -28,26 +49,57 @@ module.exports = {
     Link: {
       subscribe: () => pubsub.asyncIterator('Link'),
     },
+    Test: {
+      subscribe: () => pubsub.asyncIterator('Test'),
+    },
   },
 
   Query: {
-    allLinks: (root, data, {mongo: {Links}}) => { // 1
-      return Links.find({}).toArray(); // 2
+    allLinks: (root, {filter, first, skip}, {mongo: {Links}}) => {
+      let query = filter ? {$or: buildFilters(filter)} : {};
+      const cursor = Links.find(query);
+      if (first) {
+          cursor.limit(first);
+      }
+      if (skip) {
+          cursor.skip(skip);
+      }
+      return cursor.toArray();
     },
 
     allVotes: (root, data, {mongo: {Votes}}) => { // 1
       return Votes.find({}).toArray(); // 2
     },
+
+    allTests: (root, data, {mongo: {Tests}}) => { // 1
+      return Tests.find({}).toArray(); // 2
+    },
   },
 
   Mutation: {
+
+    createTest: (root, data, {mongo: {Tests}}) => {
+
+        const newTest = {
+            test: data.test,
+            linkId: new ObjectID(data.linkId),
+        };
+        return Tests.insert(newTest).then((response) => {
+            
+            console.log('response', response.ops[0]);
+            pubsub.publish('Test', {Test: {mutation: 'CREATED', node: response.ops[0]}});
+
+            return response.ops[0];
+        });
+    
+    },
 
     createLink: (root, data, {mongo: {Links}, user}) => {
         assertValidLink(data);
         const newLink = Object.assign({postedById: user && user._id}, data);
         return Links.insert(newLink).then((response) => {
             
-            newLink.id = response.insertedIds[0];
+            newLink.id = response.insertedIds[0];            
             console.log(newLink);
             pubsub.publish('Link', {Link: {mutation: 'CREATED', node: newLink}});
 
@@ -99,6 +151,10 @@ module.exports = {
 
     removeAllLinks: (root, data, {mongo: {Votes,Links}}) => {
         return Votes.remove().then(() => Links.remove());
+    },
+
+    removeAllTests: (root, data, {mongo: {Tests}}) => {
+        return Tests.remove();
     }
 
 },
@@ -130,4 +186,12 @@ module.exports = {
             return Links.findOne({_id: linkId});
         },
     },
+    Test: {
+        id: root => root._id || root.id,
+
+        link: ({linkId}, data, {mongo: {Links}}) => {
+            // This wont work for subscriptions
+            return Links.findOne({_id: linkId});
+        },
+    }
 };

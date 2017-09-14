@@ -10,6 +10,7 @@ module.exports = () => {
         Links: db.collection('links'),
         Users: db.collection('users'),
         Votes: db.collection('votes'),
+        Tests: db.collection('tests'),
     };
   });
 }

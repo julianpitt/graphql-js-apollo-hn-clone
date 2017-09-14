@@ -4,17 +4,21 @@ const resolvers = require('./resolvers');
 // Define your types here.
 const typeDefs = `
 
-  input LinkSubscriptionFilter {
+  input TestSubscriptionFilter {
     mutation_in: [_ModelMutationType!]
   }
 
   input VoteSubscriptionFilter {
     mutation_in: [_ModelMutationType!]
   }
+  
+  input LinkSubscriptionFilter {
+    mutation_in: [_ModelMutationType!]
+  }
 
-  type LinkSubscriptionPayload {
+  type TestSubscriptionPayload {
     mutation: _ModelMutationType!
-    node: Link
+    node: Test
   }
 
   type VoteSubscriptionPayload {
@@ -22,10 +26,27 @@ const typeDefs = `
     node: Vote
   }
 
+  type LinkSubscriptionPayload {
+    mutation: _ModelMutationType!
+    node: Link
+  }
+
   enum _ModelMutationType {
     CREATED
     UPDATED
     DELETED
+  }
+
+  type Test {
+    id: ID!
+    test: String!
+    link: Link!
+  }
+
+  type Vote {
+    id: ID!
+    user: User!
+    link: Link!
   }
 
   type Link {
@@ -35,24 +56,34 @@ const typeDefs = `
     postedBy: User
     votes: [Vote!]
   }
-
+  
   type Query {
-    allLinks: [Link!]!
+    allLinks(filter: LinkFilter, skip: Int, first: Int): [Link!]!
     allVotes: [Vote!]!
+    allTests: [Test!]!
+  }
+
+  input LinkFilter {
+    OR: [LinkFilter!]
+    description_contains: String
+    url_contains: String
   }
 
   type Mutation {
+    createVote(linkId: ID!): Vote
+    createTest(test: String!, linkId: ID!): Test
     createLink(url: String!, description: String!): Link
     createUser(name: String!, authProvider: AuthProviderSignupData!): User
     signinUser(credentials: AUTH_PROVIDER_EMAIL): SigninPayload
-    createVote(linkId: ID!): Vote
     removeAll: String
     removeAllLinks: String
+    removeAllTests: String
   }
 
   type Subscription {
     Vote(filter: VoteSubscriptionFilter): VoteSubscriptionPayload
     Link(filter: LinkSubscriptionFilter): LinkSubscriptionPayload
+    Test(filter: TestSubscriptionFilter): TestSubscriptionPayload
   }
 
   type User {
@@ -68,11 +99,6 @@ const typeDefs = `
     user: User
   }
 
-  type Vote {
-    id: ID!
-    user: User!
-    link: Link!
-  }
 
   input AuthProviderSignupData {
     credentials: AUTH_PROVIDER_EMAIL
